@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quizbot_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://quizuser:quizpassword@db:5432/quizbot_db
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - quizbot_network
+
+  db:
+    image: postgres:16-alpine
+    container_name: quizbot_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: quizuser
+      POSTGRES_PASSWORD: quizpassword
+      POSTGRES_DB: quizbot_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quizuser -d quizbot_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - quizbot_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  quizbot_network:
+    driver: bridge
